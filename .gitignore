@@ -1,0 +1,8 @@
+# Cache and temporary files
+.cache/
+*~
+*.log
+
+# Secrets (if your widgets use private API keys for weather, etc.)
+secrets.json
+.env
