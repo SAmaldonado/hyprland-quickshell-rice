@@ -3,16 +3,21 @@ import QtQuick.Layouts
 import QtQuick.Controls 
 import Qt.labs.folderlistmodel 
 import Quickshell
-import Quickshell.Io // Volvemos a nuestro confiable Io para el Process
+import Quickshell.Io 
 
 Window {
     id: rootWindow
-    width: 600  
+    width: 850  // <-- 1. Mucho más ancho para que quepan 5 fondos
     height: 250 
-    visible: true // Nace visible instantáneamente
+    visible: true 
     color: "transparent"
     title: "TitanWallpaperMenu"
     flags: Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint
+    
+    // <-- INTENTO DE SOLDADURA NATIVA -->
+    // Si Hyprland respeta esto, se pegará arriba al centro
+    x: (Screen.width - width) / 2
+    y: 35 // Ajusta este número según el grosor de tu barra superior
 
     Rectangle {
         id: mainContainer
@@ -24,6 +29,7 @@ Window {
         border.width: 2
         opacity: 0.98
 
+        // Parche cuadrado superior para la soldadura
         Rectangle {
             anchors.top: parent.top
             anchors.left: parent.left
@@ -34,48 +40,54 @@ Window {
 
         ColumnLayout {
             anchors.fill: parent
-            spacing: 10
-            anchors.margins: 15
+            spacing: 15
+            anchors.margins: 20
 
+            // BUSCADOR
             Rectangle {
                 Layout.fillWidth: true
-                Layout.preferredHeight: 30
+                Layout.preferredHeight: 35
                 color: Theme.primaryContainer
-                radius: 15 
+                radius: 10 
                 
                 RowLayout {
                     anchors.fill: parent
                     anchors.margins: 5
-                    anchors.leftMargin: 10
-                    anchors.rightMargin: 10
-                    Text { text: "🔍"; font.pixelSize: 12 }
+                    anchors.leftMargin: 15
+                    anchors.rightMargin: 15
+                    Text { text: "🔍"; font.pixelSize: 14 }
                     
                     TextField {
                         id: searchField
                         Layout.fillWidth: true
-                        placeholderText: "Buscar atmósfera..."
+                        placeholderText: "Buscar atmósfera o comando..."
                         color: Theme.primary
                         background: null
                         focus: true
-                        font.pixelSize: 12
+                        font.pixelSize: 13
                         font.bold: true
                         onFocusChanged: if (focus) searchField.selectAll()
-                        
-                        // Si te arrepientes, presiona ESC y se cierra
-                        Keys.onEscapePressed: Qt.quit()
+                        Keys.onEscapePressed: Qt.quit() // ESC para cerrar
                     }
                 }
             }
 
+            // CARRUSEL
             ListView {
                 id: listView
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
                 orientation: ListView.Horizontal 
-                spacing: 15
+                spacing: 20 // <-- 2. Más espacio para evitar textos remontados
                 focus: true 
                 
+                // Físicas del carrusel (Cover Flow)
+                preferredHighlightBegin: width / 2 - 80 
+                preferredHighlightEnd: width / 2 + 80
+                highlightRangeMode: ListView.StrictlyEnforceRange
+                snapMode: ListView.SnapToItem
+
                 model: FolderListModel {
                     folder: "file:///home/Maxstep/Pictures/Wallpapers/Live"
                     nameFilters: [ "*" + searchField.text + "*.mp4" ] 
@@ -85,14 +97,13 @@ Window {
                 highlight: Rectangle {
                     color: Theme.primary
                     opacity: 0.15
-                    radius: 8
+                    radius: 12
                     border.color: Theme.primary
                     border.width: 1
-                    Behavior on y { SpringAnimation { spring: 3; damping: 0.25 } }
+                    Behavior on x { SpringAnimation { spring: 3; damping: 0.25 } }
                 }
                 highlightMoveDuration: 200
 
-                // Al dar Enter
                 Keys.onReturnPressed: {
                     let selectedFile = model.get(listView.currentIndex, "fileName")
                     ejecutarScript.command = ["/home/Maxstep/.local/bin/dinamico.sh", selectedFile]
@@ -101,20 +112,28 @@ Window {
                 }
 
                 delegate: Item {
-                    width: 130
+                    width: 160 // <-- 3. Tarjetas más anchas
                     height: listView.height
                     
+                    // Efecto visual: agranda el seleccionado, achica el resto
+                    scale: ListView.isCurrentItem ? 1.05 : 0.85
+                    opacity: ListView.isCurrentItem ? 1.0 : 0.5
+                    Behavior on scale { SpringAnimation { spring: 3; damping: 0.2 } }
+                    Behavior on opacity { NumberAnimation { duration: 200 } }
+
                     ColumnLayout {
                         anchors.fill: parent
-                        spacing: 5
+                        spacing: 8
 
+                        // MINIATURA DEL VIDEO
                         Rectangle {
                             Layout.fillWidth: true
                             Layout.fillHeight: true
-                            radius: 8
+                            color: Theme.surfaceVariant // Fondo por si falla la imagen
+                            radius: 12
                             clip: true
                             border.color: ListView.isCurrentItem ? Theme.primary : "transparent"
-                            border.width: 1
+                            border.width: 2
 
                             Image {
                                 anchors.fill: parent
@@ -123,16 +142,18 @@ Window {
                             }
                         }
 
+                        // TEXTO CONTROLADO
                         Text {
                             text: fileName.replace(".mp4", "")
                             color: Theme.foreground
                             font.bold: true
-                            font.pixelSize: 10
-                            Layout.alignment: Qt.AlignHCenter
+                            font.pixelSize: 12
+                            Layout.fillWidth: true
+                            horizontalAlignment: Text.AlignHCenter
+                            elide: Text.ElideRight // <-- Corta el texto con "..." si es enorme
                         }
                     }
 
-                    // Al hacer Clic
                     MouseArea {
                         anchors.fill: parent
                         cursorShape: Qt.PointingHandCursor
@@ -147,7 +168,6 @@ Window {
         } 
     } 
 
-    // El motor confiable para correr bash
     Process {
         id: ejecutarScript
         onExited: Qt.quit() 
