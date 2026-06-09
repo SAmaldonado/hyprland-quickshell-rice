@@ -180,10 +180,9 @@ PanelWindow {
         }
     }
 
-    // Demonio IPC que despierta el menú al hacer clic
+/// Demonio que lanza o cierra la Omnibar al hacer clic
     Process {
         id: openMenuScript
-        // Usamos la nueva sintaxis: quickshell ipc call [target] [function]
-        command: [ "quickshell", "ipc", "call", "Omnibar", "open" ]
+        command: ["sh", "-c", "pkill -f WallpaperSearchMenu || quickshell -p /home/Maxstep/Titan-OS/quickshell/WallpaperSearchMenu.qml"]
     }
 }
